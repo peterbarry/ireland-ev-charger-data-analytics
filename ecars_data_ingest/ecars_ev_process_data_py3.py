@@ -1,5 +1,6 @@
 
 import os
+import shutil
 import bz2
 import lxml
 import pykml
@@ -9,6 +10,7 @@ from collections import defaultdict
 import pickle
 from datetime import datetime
 import time
+from pathlib import Path
 
 import influxdb_client
 
@@ -20,6 +22,10 @@ from pykml import parser
 import xml.etree.ElementTree as et
 from html.parser import HTMLParser
 from html.entities import name2codepoint
+
+
+data_directory = './saved_data'
+processed_data_directory = './saved_data/processed'
 
 charger_data = {}
 
@@ -137,9 +143,9 @@ if update_influx_db:
 
 
 if processing_to_do == 1:
-    data_directory = './saved_data'
     # Get .txt files
     for f_name in os.listdir(data_directory):
+        f_name_processed = False
         if f_name.endswith('.bz2'):
             if update_influx_db==1:
                 charger_data = {} #// reset after each file, as we uploaded to influx    
@@ -375,11 +381,32 @@ if processing_to_do == 1:
                     point_list.append(p)
                     #write_api.write(bucket=bucket, org="Home", record=p)   
             if ( len(point_list)) > 0:
-                write_api.write(bucket=bucket, org="Home", record=point_list)   
+                try:
+                    write_api.write(bucket=bucket, org="Home", record=point_list)   
+                    f_name_processed = True
+                except:
+                    f_name_processed = False
+                    print('EXception : Failed to write to influxdb')
+
         else:
             print('saving last picklefile')
             pickle.dump( charger_data, open( "save_charger_data.p", "wb" ) )
             print('done')
+
+
+        if f_name_processed:
+            print('Move file to procssed')
+            f_name_processed = False
+            processed_file_name = processed_data_directory + '/' + Path(f_name).name
+            # Ensure we dont process the file while being written by shell script
+            delta_time = time.time() - os.path.getmtime(f_name)
+            if (delta_time >= 60) :
+                print(processed_file_name)
+                shutil.move(f_name,processed_file_name)
+                print('File is ' )
+                print(delta_time)
+                print(' Second old')
+
 
 elif processing_to_do == 2:
     pickle_in = open("save_charger_data.p","rb")
