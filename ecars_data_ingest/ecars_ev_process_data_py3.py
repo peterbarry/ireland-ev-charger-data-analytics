@@ -131,7 +131,7 @@ files_processed=0
 
 if update_influx_db:
     bucket = "esb-charger-bucket"
-    client = InfluxDBClient(url="http://localhost:9999", token="Ub_vT-0wkM2CSRnlmre84WgBVt4hq2MyL7poK7qMmmQVD-YHRRcX1gtmkARl4f4izpSUo_F9yl_MZwp-8MTB5g==", org="Home")
+    client = InfluxDBClient(url="http://localhost:9999", token="a6ht_xX40q3dWXG61XWtV2beocFqKYDzqK8eJz596x6uCBSdL9ajze-SR6-cBhOG0kaIQq4kBdcq5_XThWX39Q==", org="Home")
     write_api = client.write_api(write_options=SYNCHRONOUS)
     query_api = client.query_api()
 
@@ -338,8 +338,10 @@ if processing_to_do == 1:
         #    print('pickefile saved')
 
         if update_influx_db:
+            i=0
+            point_list=[]
             for charger_key in list(charger_data.keys()):
-                #print(charger_key)
+                #print(charger_key)A
                 #print((charger_data[charger_key].name))
                 #print((charger_data[charger_key].location))
                 for port_info in list(charger_data[charger_key].charger_ports.keys()):
@@ -368,9 +370,12 @@ if processing_to_do == 1:
                         .field("state_int",avail_val) \
                         .time(time=date_time_obj)
 
-
-                    write_api.write(bucket=bucket, org="Home", record=p)   
-                
+                    
+                    i = i+1
+                    point_list.append(p)
+                    #write_api.write(bucket=bucket, org="Home", record=p)   
+            if ( len(point_list)) > 0:
+                write_api.write(bucket=bucket, org="Home", record=point_list)   
         else:
             print('saving last picklefile')
             pickle.dump( charger_data, open( "save_charger_data.p", "wb" ) )
